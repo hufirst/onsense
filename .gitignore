@@ -1,0 +1,10 @@
+dist/
+build/
+*.egg-info/
+__pycache__/
+*.pyc
+.venv/
+pair_qr.png
+.omc/
+.claude/
+.DS_Store

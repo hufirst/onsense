@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>onSense — Privacy Policy</title>
+<meta name="description" content="onSense privacy policy — a local-first bridge with no developer-operated cloud.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%230b0f14'/%3E%3Cpath d='M3 12s3.5-5.5 9-5.5 9 5.5 9 5.5-3.5 5.5-9 5.5S3 12 3 12Z' fill='none' stroke='%234adec4' stroke-width='1.8'/%3E%3Ccircle cx='12' cy='12' r='2.6' fill='%234adec4'/%3E%3C/svg%3E">
+<style>
+  :root{ --bg:#0b0f14; --fg:#eaf1f5; --mute:#9fb0bd; --accent:#4adec4; --line:#1e2a35; --card:#111820; }
+  @media (prefers-color-scheme: light){ :root{ --bg:#f6f9fb; --fg:#0d1a22; --mute:#4a5b66; --accent:#0d9488; --line:#dde6ec; --card:#fff; } }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:16px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:760px;margin:0 auto;padding:40px 22px 80px}
+  h1{font-size:28px;letter-spacing:-.02em;margin:0 0 4px}
+  .eff{color:var(--mute);font-size:14px;margin:0 0 8px}
+  .lang{color:var(--mute);font-size:13px;margin:0 0 28px}
+  .lang a{color:var(--accent);text-decoration:none}
+  h2{font-size:19px;margin:34px 0 8px;border-top:1px solid var(--line);padding-top:24px}
+  h3{font-size:15px;margin:26px 0 6px;color:var(--accent)}
+  p,li{color:var(--fg)}
+  ul{padding-left:20px;margin:8px 0}
+  li{margin:5px 0}
+  code{background:var(--card);border:1px solid var(--line);padding:1px 6px;border-radius:5px;font-size:13.5px}
+  a{color:var(--accent)}
+  .intro{color:var(--mute)}
+  footer{margin-top:40px;color:var(--mute);font-size:13px;border-top:1px solid var(--line);padding-top:20px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>onSense — Privacy Policy</h1>
+  <p class="eff">Effective date: 2026-06-27 · Contact: <a href="mailto:fhqhxm@gmail.com">fhqhxm@gmail.com</a></p>
+  <p class="lang"><a href="#en">English</a> · <a href="#ko">한국어</a></p>
+
+  <section id="en">
+  <p class="intro">onSense lets a PC AI tool that you connect yourself use your Android phone's camera, recent photos, some sensor readings, and files/clipboard content that you choose. onSense works on your local network by default and does <strong>not</strong> upload your photos, video, sensor data, files, clipboard content, or account information to any developer-operated cloud server.</p>
+
+  <h2>1. Information we process</h2>
+  <p>onSense may process the following on your device to provide app features:</p>
+  <ul>
+    <li><strong>Camera frames</strong> — delivered to the PC/AI tool you connect, on request. Processed in memory while the app runs, in response to token-protected local HTTP requests.</li>
+    <li><strong>Recent photos and selected images</strong> — delivered when your AI tool requests them. Read via Android media permission and sent over your local network on request.</li>
+    <li><strong>Sensor readings</strong> — battery, ambient light, and motion, to report device state. Sent over your local network on request.</li>
+    <li><strong>Files and clipboard content</strong> — processed only when you explicitly send a file, send the phone clipboard, or pull the PC clipboard. Content sent from phone to PC may be saved by the PC clip daemon you run; pulling the PC clipboard works only if you enabled it on the PC.</li>
+    <li><strong>Pairing token</strong> — so only your connected PC can reach the app. Stored on the device.</li>
+    <li><strong>Access log</strong> — shows you when and what kind of data the AI/PC accessed. Recent entries stored on the device.</li>
+    <li><strong>Last accessed PC IP</strong> — used to send images/files/clipboard to your PC. Stored on the device.</li>
+  </ul>
+
+  <h2>2. Permissions</h2>
+  <ul>
+    <li><strong>Camera</strong> — deliver live frames to the AI tool you connect.</li>
+    <li><strong>Photos/media</strong> — provide recent photos and selected images.</li>
+    <li><strong>Internet / network state</strong> — communicate with the PC on the same local network and detect IP changes.</li>
+    <li><strong>Foreground service / camera foreground service</strong> — keep the camera sharing you explicitly started running even when the screen is off.</li>
+    <li><strong>Notifications</strong> — persistently indicate that camera sharing is active and report access.</li>
+    <li><strong>Battery optimization exemption request</strong> — reduce the chance a manufacturer battery policy stops the service during long sharing sessions.</li>
+    <li><strong>Vibration</strong> — feedback when the AI/PC accesses data.</li>
+  </ul>
+
+  <h2>3. Transfer and sharing</h2>
+  <p>onSense does not transmit camera, photo, sensor, file, or clipboard data to any developer-operated server. When you pair with a PC and start the app, a PC-side MCP broker on your local network (or a network path you configure) may request the current camera frame, recent photo list, selected photos, sensor state, and app version. When you press a send button in the app, a selected file, the current frame, or the phone clipboard may be sent to the PC clip daemon you run. Pulling the PC clipboard works only if you enabled it on the PC (e.g. <code>onsense clip --allow-pull</code>). This data may be delivered to the PC MCP broker you installed and to the AI client used on that PC. How an AI client or external AI service handles that data is governed by its own policy.</p>
+
+  <h2>4. Retention</h2>
+  <ul>
+    <li>Camera frames are not stored persistently; they are processed in memory on request.</li>
+    <li>Files/clipboard content you send to the PC are not stored on any developer server; they may remain on the PC you run, depending on its storage location or clipboard settings.</li>
+    <li>The pairing token, settings, access log, and last PC IP are stored on your device.</li>
+    <li>The access log keeps only recent entries for in-app display and is removed when app data is cleared or the app is uninstalled.</li>
+    <li>You can clear app data or uninstall the app in Android settings to delete locally stored data.</li>
+  </ul>
+
+  <h2>5. Security</h2>
+  <ul>
+    <li>Key data endpoints are protected by a pairing token the app generates.</li>
+    <li>A persistent notification shows camera sharing status while the app runs.</li>
+    <li>Pulling the PC clipboard and auto-injecting into the PC clipboard are off by default and work only if explicitly enabled on the PC.</li>
+    <li>Sensitive payloads are AES-256-GCM encrypted and requests are HMAC-signed. Early versions use local-network HTTP for some metadata; use on trusted networks only.</li>
+    <li>Stop sharing in the app when you are not using it.</li>
+  </ul>
+
+  <h2>6. Children's privacy</h2>
+  <p>onSense is not directed to children. It is a tool for developers and power users to connect their own Android device to AI tools.</p>
+
+  <h2>7. Your choices</h2>
+  <ul>
+    <li>Start/stop camera sharing in the app.</li>
+    <li>Content is sent only when you press a file/clipboard send button in the app.</li>
+    <li>Enable/disable PC clipboard pull and auto-injection on the PC.</li>
+    <li>Revoke camera, photo, or notification permissions in Android settings.</li>
+    <li>Clear app data or uninstall the app.</li>
+    <li>Re-pair with the PC to set up a new connection.</li>
+  </ul>
+
+  <h2>8. Contact</h2>
+  <p>Questions: <a href="mailto:fhqhxm@gmail.com">fhqhxm@gmail.com</a></p>
+
+  <h2>9. Changes</h2>
+  <p>This privacy policy may be updated as app features or distribution policies change. We will note material changes through the app or the distribution page.</p>
+  </section>
+
+  <section id="ko">
+  <h2>한국어</h2>
+  <p class="eff">시행일: 2026년 6월 27일 · 문의: <a href="mailto:fhqhxm@gmail.com">fhqhxm@gmail.com</a></p>
+  <p class="intro">onSense는 Android 휴대폰의 카메라, 최근 사진, 일부 센서 정보와 사용자가 선택한 파일·클립보드 내용을 사용자가 직접 연결한 PC의 AI 도구에서 사용할 수 있게 해주는 앱입니다. onSense는 기본적으로 로컬 네트워크에서 동작하며, 개발자가 운영하는 클라우드 서버로 사진, 영상, 센서 데이터, 파일, 클립보드 내용, 계정 정보를 업로드하지 않습니다.</p>
+
+  <h3>1. 수집 또는 처리하는 정보</h3>
+  <ul>
+    <li><strong>카메라 프레임</strong>: 연결한 PC/AI 도구에 현재 화면을 전달. 실행 중 메모리에서 처리하고 토큰으로 보호된 로컬 HTTP 요청에 응답합니다.</li>
+    <li><strong>최근 사진 목록과 선택된 사진</strong>: 요청 시 전달. 미디어 권한으로 읽고 로컬 네트워크로 전달합니다.</li>
+    <li><strong>센서 정보</strong>: 배터리·조도·가속도 등 기기 상태. 요청 시 로컬 네트워크로 전달합니다.</li>
+    <li><strong>파일 및 클립보드 내용</strong>: 사용자가 파일 보내기/폰 클립보드 보내기/PC 클립보드 가져오기를 실행할 때만 처리합니다. 폰→PC 전송분은 사용자가 실행한 PC clip 데몬에 저장될 수 있고, PC 클립보드 가져오기는 PC에서 먼저 허용한 경우에만 동작합니다.</li>
+    <li><strong>페어링 토큰</strong>: 연결된 PC만 접근하도록 보호. 기기 내부에 저장합니다.</li>
+    <li><strong>접근 로그</strong>: AI/PC가 언제 어떤 데이터에 접근했는지 표시. 기기 내부에 최근 기록을 저장합니다.</li>
+    <li><strong>마지막 접근 PC IP</strong>: PC로 이미지·파일·클립보드를 보낼 때 사용. 기기 내부에 저장합니다.</li>
+  </ul>
+
+  <h3>2. 사용 권한</h3>
+  <ul>
+    <li>카메라 · 사진/미디어 읽기 · 인터넷/네트워크 상태 · 포그라운드 서비스(카메라) · 알림 · 배터리 최적화 예외 요청 · 진동. 각 권한은 위 기능 제공에만 사용합니다.</li>
+  </ul>
+
+  <h3>3. 외부 전송과 공유</h3>
+  <p>개발자 서버로 카메라·사진·센서·파일·클립보드 데이터를 전송하지 않습니다. PC와 페어링하고 앱을 시작하면 로컬 네트워크의 PC MCP 브로커가 현재 프레임·최근 사진·선택 사진·센서 상태·앱 버전을 요청할 수 있습니다. 앱에서 전송 버튼을 누르면 선택한 파일·현재 프레임·폰 클립보드가 사용자가 실행한 PC clip 데몬으로 전송될 수 있습니다. PC 클립보드 가져오기는 PC에서 <code>onsense clip --allow-pull</code> 등으로 허용한 경우에만 동작합니다. 이 데이터는 사용자가 설치·실행한 PC MCP 브로커와 AI 클라이언트로 전달될 수 있으며, AI 클라이언트/외부 서비스의 처리 방식은 각 서비스 정책을 따릅니다.</p>
+
+  <h3>4. 저장 기간</h3>
+  <ul>
+    <li>카메라 프레임은 지속 저장하지 않고 요청 시 메모리에서 처리합니다.</li>
+    <li>PC로 보낸 파일·클립보드는 개발자 서버에 저장되지 않으며, 사용자 PC의 저장 위치·설정에 따라 PC에 남을 수 있습니다.</li>
+    <li>페어링 토큰·설정·접근 로그·마지막 PC IP는 기기 안에 저장됩니다. 앱 데이터 삭제 또는 앱 제거 시 제거됩니다.</li>
+  </ul>
+
+  <h3>5. 보안</h3>
+  <ul>
+    <li>주요 엔드포인트는 앱이 생성한 페어링 토큰으로 보호됩니다. 민감 데이터는 AES-256-GCM 암호화·HMAC 서명됩니다.</li>
+    <li>PC 클립보드 가져오기·자동 주입은 기본 꺼짐이며 PC에서 명시적으로 켠 경우에만 동작합니다.</li>
+    <li>신뢰할 수 없는 네트워크에서는 사용을 권장하지 않으며, 사용하지 않을 때는 공유를 중지하세요.</li>
+  </ul>
+
+  <h3>6. 아동 개인정보</h3>
+  <p>onSense는 어린이 대상 앱이 아니며, 개발자·파워유저가 자신의 기기를 AI 도구에 연결하기 위한 도구입니다.</p>
+
+  <h3>7. 사용자의 선택</h3>
+  <ul>
+    <li>앱에서 카메라 공유 시작/중지, 전송 버튼을 누른 경우에만 전송, PC에서 가져오기/자동 주입 허용·해제, Android 설정에서 권한 취소, 앱 데이터 삭제/앱 제거, 재페어링으로 새 연결 구성.</li>
+  </ul>
+
+  <h3>8. 문의</h3>
+  <p>문의: <a href="mailto:fhqhxm@gmail.com">fhqhxm@gmail.com</a></p>
+
+  <h3>9. 변경</h3>
+  <p>이 방침은 앱 기능·배포 정책 변경에 따라 업데이트될 수 있으며, 중요한 변경은 앱 또는 배포 페이지로 안내합니다.</p>
+  </section>
+
+  <footer>onSense — a local-first bridge with no developer-operated cloud. · <a href="https://hufirst.github.io/onsense/">Home</a></footer>
+</div>
+</body>
+</html>

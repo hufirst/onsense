@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>onSense — Real-world eyes for your PC AI agent</title>
 <meta name="description" content="Android camera, files & sensors as a local MCP tool for Claude, Codex & other PC AI agents. No cloud, no ADB, local Wi-Fi first.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%230b0f14'/%3E%3Cpath d='M3 12s3.5-5.5 9-5.5 9 5.5 9 5.5-3.5 5.5-9 5.5S3 12 3 12Z' fill='none' stroke='%234adec4' stroke-width='1.8'/%3E%3Ccircle cx='12' cy='12' r='2.6' fill='%234adec4'/%3E%3C/svg%3E">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-512.png">
 
 <!-- URLs use the confirmed owner `hufirst` (github.com/hufirst/onsense, Pages: hufirst.github.io/onsense). Live once the public repo (B2) is created + Pages enabled. og:image / og:url MUST stay absolute. -->
 <meta property="og:type" content="website">
@@ -45,13 +46,15 @@
     background:color-mix(in srgb,var(--bg) 82%,transparent);border-bottom:1px solid var(--line)}
   nav .wrap{display:flex;align-items:center;gap:18px;height:60px}
   .brand{display:flex;align-items:center;gap:9px;font-weight:800;font-size:19px;letter-spacing:-.02em}
-  .brand svg{display:block}
+  .brand img{display:block;width:28px;height:28px;border-radius:7px}
   nav .spacer{flex:1}
   nav a{color:var(--mute);font-weight:600;font-size:14px}
   nav a:hover{color:var(--fg);text-decoration:none}
 
   /* hero */
   .hero{padding:76px 0 40px;text-align:center}
+  .hero-logo{width:82px;height:82px;border-radius:18px;margin:0 auto 22px;display:block;
+    box-shadow:0 18px 50px color-mix(in srgb,var(--accent) 22%,transparent)}
   .badge{display:inline-block;font-size:12.5px;font-weight:800;letter-spacing:.14em;
     color:var(--accent);border:1px solid var(--accent-dim);border-radius:999px;padding:6px 14px;margin-bottom:26px}
   h1{font-size:clamp(34px,6vw,58px);line-height:1.05;letter-spacing:-.03em;margin:0 0 18px;font-weight:800}
@@ -108,7 +111,7 @@
   .scene .ic{font-size:26px;margin-bottom:8px}
   .scene b{display:block;font-size:14.5px}
   .scene span{color:var(--mute);font-size:13px}
-  .placeholder-note{margin-top:16px;font-size:13px;color:var(--mute);text-align:center;font-style:italic}
+  .scene-note{margin-top:16px;font-size:13px;color:var(--mute);text-align:center}
 
   /* recipes */
   .recipes{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
@@ -125,9 +128,10 @@
   .sec b{color:var(--fg)}
   .sec p{margin:4px 0 0;color:var(--mute);font-size:13.5px}
 
-  /* testimonials placeholder */
+  /* launch status */
   .quotes{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-  .quote{background:var(--panel2);border:1px dashed var(--line);border-radius:12px;padding:20px;color:var(--mute);font-size:14px}
+  .quote{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:20px;color:var(--mute);font-size:14px}
+  .quote b{display:block;color:var(--fg);margin-bottom:5px}
 
   /* footer */
   footer{border-top:1px solid var(--line);padding:34px 0 60px;color:var(--mute);font-size:14px}
@@ -146,10 +150,7 @@
 <nav>
   <div class="wrap">
     <span class="brand">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z" stroke="var(--accent)" stroke-width="2"/>
-        <circle cx="12" cy="12" r="3.2" fill="var(--accent)"/>
-      </svg>
+      <img src="icon.svg" alt="" aria-hidden="true">
       onSense
     </span>
     <span class="spacer"></span>
@@ -160,6 +161,7 @@
 </nav>
 
 <header class="hero wrap">
+  <img class="hero-logo" src="icon.svg" alt="onSense app icon">
   <span class="badge">LOCAL · NO CLOUD · NO ADB</span>
   <h1>Real-world eyes for your <span class="accent">PC AI agent</span></h1>
   <p class="lead">A local MCP bridge for your Android phone — so Claude Code, Claude Desktop, Codex,
@@ -216,7 +218,8 @@
       <div class="scene"><div class="ic">🏷️</div><b>Product labels</b><span>Model, serial, specs</span></div>
       <div class="scene"><div class="ic">📟</div><b>Device panels</b><span>Meters, error screens</span></div>
     </div>
-    <p class="placeholder-note">↳ DRAFT: replace with 4 short use-scene GIFs (circuit / document / label / sensors) — extracted from the 60-second demos (실행계획 §3.2).</p>
+    <p class="scene-note">Start with the split-screen demo above, then point the phone at your own desk,
+      document, label, or device panel. More short use-scene clips will be added after the first public user reports.</p>
   </div>
 </section>
 
@@ -270,12 +273,12 @@
 
 <section>
   <div class="wrap">
-    <h2>Used for…</h2>
-    <p class="sub">Real scenes from early users. <span style="opacity:.7">(Filled in as consenting users share how they use it — 실행계획 §6b.)</span></p>
+    <h2>Launch status</h2>
+    <p class="sub">onSense is early, local-first software for developers and power users. The PC bridge is public; the Android app is rolling out through Google Play.</p>
     <div class="quotes">
-      <div class="quote">“…”  — placeholder for a real user quote / usage screenshot.</div>
-      <div class="quote">“…”  — placeholder.</div>
-      <div class="quote">“…”  — placeholder.</div>
+      <div class="quote"><b>PC bridge</b>Published on PyPI and the official MCP Registry. Install with <code>uvx onsense pair</code>.</div>
+      <div class="quote"><b>Android app</b>Submitted to Google Play production review. If Play is not visible in your region yet, use the GitHub README for current status.</div>
+      <div class="quote"><b>Feedback wanted</b>Open an issue with the scene you tried, your OS, Android model, and where pairing or tool calls failed.</div>
     </div>
   </div>
 </section>
@@ -283,7 +286,7 @@
 <footer>
   <div class="wrap">
     <div class="row">
-      <span class="brand" style="font-size:16px">onSense</span>
+      <span class="brand" style="font-size:16px"><img src="icon.svg" alt="" aria-hidden="true">onSense</span>
       <span class="spacer"></span>
       <a href="https://github.com/hufirst/onsense">GitHub</a>
       <a href="https://pypi.org/project/onsense/">PyPI</a>

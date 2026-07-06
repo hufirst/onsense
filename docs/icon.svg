@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- onSense app icon: robot face + camera/sensor eye on a stalk -->
+  <rect width="1024" height="1024" fill="#18294C"/>
+
+  <!-- inner pattern shifted left ~5% so the eye stays centered / clear of the frame edge -->
+  <g transform="translate(-50 0)">
+    <!-- stalk connecting face to eyeball -->
+    <path d="M636 548 C 714 560 700 470 738 444"
+          fill="none" stroke="#FFFFFF" stroke-width="54" stroke-linecap="round"/>
+
+    <!-- face: white outer stadium -->
+    <rect x="150" y="486" width="570" height="368" rx="184" fill="#FFFFFF"/>
+    <!-- face: navy interior cut-out -->
+    <rect x="226" y="562" width="418" height="216" rx="108" fill="#18294C"/>
+
+    <!-- eye slots: matched to original (narrow, well-spaced) -->
+    <rect x="316" y="627" width="48" height="86" rx="24" fill="#FFFFFF"/>
+    <rect x="506" y="627" width="48" height="86" rx="24" fill="#FFFFFF"/>
+
+    <!-- eyeball: white ring, teal iris, dark pupil, specular highlight -->
+    <circle cx="800" cy="312" r="170" fill="#FFFFFF"/>
+    <circle cx="800" cy="312" r="122" fill="#22C3A6"/>
+    <circle cx="800" cy="312" r="66"  fill="#06202A"/>
+    <circle cx="836" cy="280" r="22"  fill="#FFFFFF"/>
+  </g>
+</svg>

@@ -175,6 +175,34 @@ def _valid_base(b: str) -> bool:
     return u.scheme == "http" and bool(u.hostname) and _lan_ok(u.hostname)
 
 
+def _bind_pair_server(ip: str, port: int, handler, tries: int = 10):
+    """Bind the QR-pairing HTTPServer, auto-advancing past busy ports.
+
+    A fixed port means any other program already squatting on it (a stale prior `pair` run, an
+    unrelated local service, etc.) turns into a raw traceback for the user. Auto-fallback is safe
+    here because the QR/URL is generated *after* the bind succeeds, so the phone always gets the
+    port that's actually listening.
+
+    Retries on ANY OSError rather than filtering by errno: the "port busy" error code isn't
+    portable (Linux raises EADDRINUSE/98, Windows raises WSAEADDRINUSE/10048 *or* WSAEACCES/10013
+    when the occupant holds the port with SO_EXCLUSIVEADDRUSE — verified against a .NET
+    TcpListener blocker on Windows 11, which triggered the 10013 case). If a candidate fails for
+    an unrelated reason, every other candidate fails the same way and the loop still ends in the
+    friendly error below instead of a raw traceback.
+    """
+    last_err = None
+    for candidate in range(port, port + tries):
+        try:
+            return HTTPServer((ip, candidate), handler), candidate
+        except OSError as e:
+            last_err = e
+    raise OSError(
+        f"Could not find a free port for pairing after trying {port}-{port + tries - 1}. "
+        f"Last error: {last_err}. Pass --port to pick a different range, or free up a port "
+        "(check with `ss -ltnp` / `lsof -i :<port>` for what's using it)."
+    )
+
+
 def serve_and_register(local: bool = False, client: str = "claude", port: int = PAIR_PORT,
                        timeout_s: int = 300):
     ip = pc_lan_ip()
@@ -182,20 +210,6 @@ def serve_and_register(local: bool = False, client: str = "claude", port: int = 
     # The phone POSTs with the full scanned URL (query included), so the listener verifies s → blocking a
     # preemptive injection (registering a fake base/token) by a LAN attacker who never saw the QR.
     pair_secret = secrets.token_urlsafe(16)
-    url = f"http://{ip}:{port}/pair?s={pair_secret}"
-    try:
-        import qrcode
-        qr = qrcode.QRCode(border=2)
-        qr.add_data(url)
-        qr.make(fit=True)
-        qr.print_ascii(invert=True)
-    except ImportError:
-        print("[qrcode not installed — enter the address below into the phone directly]")
-    print("\nStep 1 — install the onSense app on your phone (skip if already installed):")
-    print("        https://play.google.com/store/apps/details?id=com.shdev.onsense")
-    print(f"Step 2 — open it, tap [Scan PC QR], and scan the QR above.  Waiting...  ({url})")
-    print("(If the firewall prompts or blocks, allow inbound port "
-          f"{port} on this PC's private network.)")
 
     received = {}
 
@@ -238,7 +252,29 @@ def serve_and_register(local: bool = False, client: str = "claude", port: int = 
             pass
 
     # Bind to the LAN IP only instead of 0.0.0.0 (reduce exposure). The pairing window itself has a timeout.
-    httpd = HTTPServer((ip, port), H)
+    try:
+        httpd, bound_port = _bind_pair_server(ip, port, H)
+    except OSError as e:
+        print(f"\nPairing failed: {e}")
+        return
+    if bound_port != port:
+        print(f"[pair] port {port} was busy — using {bound_port} instead.")
+
+    url = f"http://{ip}:{bound_port}/pair?s={pair_secret}"
+    try:
+        import qrcode
+        qr = qrcode.QRCode(border=2)
+        qr.add_data(url)
+        qr.make(fit=True)
+        qr.print_ascii(invert=True)
+    except ImportError:
+        print("[qrcode not installed — enter the address below into the phone directly]")
+    print("\nStep 1 — install the onSense app on your phone (skip if already installed):")
+    print("        https://play.google.com/store/apps/details?id=com.shdev.onsense")
+    print(f"Step 2 — open it, tap [Scan PC QR], and scan the QR above.  Waiting...  ({url})")
+    print("(If the firewall prompts or blocks, allow inbound port "
+          f"{bound_port} on this PC's private network.)")
+
     httpd.timeout = 1.0
     deadline = time.monotonic() + timeout_s
     hinted = False
@@ -274,5 +310,5 @@ def main(args) -> int:
         print(f"pairing: base={base}  token={token[:4]}****")
         register(base, token, local=local, client=client)
         return 0
-    serve_and_register(local=local, client=client)
+    serve_and_register(local=local, client=client, port=getattr(args, "port", None) or PAIR_PORT)
     return 0

@@ -202,10 +202,13 @@ def check_clip_daemon(r: Report):
 def check_firewall(r: Report):
     if platform.system() != "Windows":
         return
-    r.line(WARN, "Windows firewall", f"pairing port {PAIR_PORT} inbound required",
+    # pair auto-falls back to the next free port if PAIR_PORT is busy (up to 10 tries — see
+    # pair._bind_pair_server), so the firewall rule needs to cover the whole range, not just PAIR_PORT.
+    port_hi = PAIR_PORT + 9
+    r.line(WARN, "Windows firewall", f"pairing port {PAIR_PORT}-{port_hi} inbound required",
            "On the first pair run, click 'Allow private network' in the firewall prompt. "
            f"If blocked: netsh advfirewall firewall add rule name=onsense-pair "
-           f"dir=in action=allow protocol=TCP localport={PAIR_PORT}")
+           f"dir=in action=allow protocol=TCP localport={PAIR_PORT}-{port_hi}")
 
 
 def main(args) -> int:

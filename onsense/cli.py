@@ -48,6 +48,8 @@ def build_parser() -> argparse.ArgumentParser:
                     help="For development: register with the current interpreter (python -m onsense) instead of uvx")
     pp.add_argument("--client", default="claude",
                     help="Target CLI for MCP registration (default: claude)")
+    pp.add_argument("--port", type=int, default=None,
+                    help="Listening port for the QR pairing server (default: 8765, auto-falls back if busy)")
 
     dp = sub.add_parser("doctor", help="Diagnose install/connection problems (Python/uv/mcp/Claude/network/phone)")
     dp.add_argument("--base", help="Phone address http://IP:8080 (omit for automatic mDNS discovery)")

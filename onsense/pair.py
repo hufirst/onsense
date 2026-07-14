@@ -114,7 +114,7 @@ def is_registered(cli: str) -> bool:
 
 
 def register(base: str, token: str, local: bool = False, client: str = "claude"):
-    cli = shutil.which(client) or client
+    cli = shutil.which(client)
 
     # pair.json = single source of truth. The serve/clip daemons read it LIVE at request time
     # (server._current_token/_current_base prefer pair.json → a running session auto-follows re-pairing).
@@ -124,6 +124,17 @@ def register(base: str, token: str, local: bool = False, client: str = "claude")
         clip.save_pair(base, token)
     except Exception as e:
         print("[pair] skipping clip token save:", e)
+
+    if cli is None:
+        # No AI-client CLI on PATH (e.g. Codex-only or other MCP clients): don't crash — pairing itself
+        # is already saved (pair.json), so just print how to register the MCP server manually.
+        cmd = " ".join(serve_command(local))
+        print(f"\n⚠️  '{client}' CLI not found — skipped automatic MCP registration.")
+        print("   Pairing succeeded and was saved to ~/.onsense/pair.json.")
+        print("   Register the MCP server manually in your client, e.g.:")
+        print(f"     Codex:            codex mcp add onsense -- {cmd}")
+        print(f"     other MCP client: run it over stdio with: {cmd}")
+        return
 
     if is_registered(cli):
         # Re-pairing: don't touch the MCP registration. remove/add would drop a running session's stdio

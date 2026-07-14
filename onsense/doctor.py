@@ -93,7 +93,19 @@ def check_claude(r: Report):
                            errors="replace", timeout=20)
         out = (v.stdout or "") + (v.stderr or "")
         if v.returncode == 0 and "onsense" in out:
-            r.line(OK, "onsense MCP registration", "registered")
+            # A registration can silently die when its command path vanishes (e.g. the repo/venv the
+            # entry pointed to was moved or renamed) — verify the registered executable actually exists.
+            cmd = ""
+            for ln in out.splitlines():
+                if ln.strip().lower().startswith("command:"):
+                    cmd = ln.split(":", 1)[1].strip()
+                    break
+            if cmd and not (shutil.which(cmd) or os.path.exists(cmd)):
+                r.line(WARN, "onsense MCP registration", f"registered but command not executable: {cmd}",
+                       "The registered path no longer exists (moved venv/repo?). "
+                       "Re-register: claude mcp remove onsense -s user && uvx onsense pair")
+            else:
+                r.line(OK, "onsense MCP registration", "registered" + (f" ({cmd})" if cmd else ""))
         else:
             r.line(WARN, "onsense MCP registration", "not registered",
                    "Pairing with the phone via uvx onsense pair registers it automatically.")

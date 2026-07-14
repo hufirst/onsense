@@ -349,7 +349,11 @@ def read_sensors() -> str:
 
 @mcp.tool()
 def recent_photos(limit: int = 8) -> str:
-    """JSON list of the device's recent photos (id, name, date_added, w, h). Get the image via get_photo(id)."""
+    """JSON list of the device's recent photos (id, name, date_added, w, h). Get the image via get_photo(id).
+
+    If the user designated content in the phone app (LIVE / Capture / File / Phone clipboard),
+    prefer get_reference — it returns exactly what they picked; this gallery list may not include it.
+    """
     raw = _get(f"/photos?limit={limit}").decode("utf-8")
     try:  # Save tokens: drop the rarely-used size field + serialize without whitespace
         data = json.loads(raw)
@@ -398,6 +402,8 @@ def get_reference() -> str:
     (If you only need an image preview, get_live_frame is simpler.)
     Returns: {"path", "mime", "bytes", "name"} — path is the PC-local save path (the user's Downloads folder,
     so it's easy to find and use later — not a temp folder).
+    Always call this to fetch the phone's CURRENT designation — never reuse files already sitting in the
+    save folder (they are stale copies from earlier fetches, not what the user has designated now).
     """
     import re
 

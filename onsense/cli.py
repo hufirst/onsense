@@ -18,7 +18,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("-V", "--version", action="version",
                    version=f"onsense {__version__}")
-    sub = p.add_subparsers(dest="cmd", metavar="{pair,doctor,serve,clip}")
+    sub = p.add_subparsers(dest="cmd", metavar="{pair,doctor,serve,clip,stats}")
 
     sp = sub.add_parser("serve", help="Run the MCP server (stdio). Called by the AI client — registered automatically by pair")
     sp.add_argument("--token", help="Pairing token shown by the phone (default: read from ~/.onsense/pair.json)")
@@ -50,10 +50,18 @@ def build_parser() -> argparse.ArgumentParser:
                     help="Target CLI for MCP registration (default: claude)")
     pp.add_argument("--port", type=int, default=None,
                     help="Listening port for the QR pairing server (default: 8765, auto-falls back if busy)")
+    pp.add_argument("--host", default=None,
+                    help="Bind IP for the QR pairing server (for multi-NIC/VPN/WSL setups where the auto-picked IP is unreachable from the phone)")
+    pp.add_argument("--fix-firewall", action="store_true",
+                    help="(Windows, needs admin) Add the onsense-pair inbound firewall rule (TCP 8765-8774, Private) before pairing")
 
     dp = sub.add_parser("doctor", help="Diagnose install/connection problems (Python/uv/mcp/Claude/network/phone)")
     dp.add_argument("--base", help="Phone address http://IP:8080 (omit for automatic mDNS discovery)")
     dp.add_argument("--token", help="Pairing token shown by the phone")
+
+    xp = sub.add_parser("stats", help="Show local-only activation stats (nothing is uploaded automatically)")
+    xp.add_argument("--json", action="store_true", help="Print the aggregate, non-sensitive data as JSON")
+    xp.add_argument("--reset", action="store_true", help="Clear accumulated counters and start again")
     return p
 
 
@@ -92,6 +100,17 @@ def main(argv=None) -> int:
     if args.cmd == "doctor":
         from . import doctor
         return doctor.main(args)
+    if args.cmd == "stats":
+        import json
+        from . import metrics
+        if args.reset:
+            metrics.reset()
+            print("onSense local usage stats reset.")
+            return 0
+        data = metrics.snapshot()
+        print(json.dumps(data, ensure_ascii=False, indent=2) if args.json
+              else metrics.format_summary(data))
+        return 0
     build_parser().print_help()
     return 1
 

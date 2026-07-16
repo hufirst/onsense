@@ -6,6 +6,12 @@ import pytest
 from onsense import pair
 
 
+@pytest.fixture(autouse=True)
+def isolated_onsense_home(tmp_path, monkeypatch):
+    """Pairing regressions must never mutate the developer's real usage stats."""
+    monkeypatch.setenv("ONSENSE_HOME", str(tmp_path))
+
+
 def test_register_without_cli_prints_guidance_and_returns(monkeypatch, capsys):
     real_which = pair.shutil.which
     monkeypatch.setattr(pair.shutil, "which",

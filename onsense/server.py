@@ -19,7 +19,7 @@ import time
 
 from mcp.server.fastmcp import FastMCP, Image
 
-from . import __version__, MDNS_TYPE, auth, crypto
+from . import __version__, MDNS_TYPE, auth, crypto, metrics
 
 mcp = FastMCP("onsense")
 OSNAME = platform.system()  # 'Windows' | 'Darwin' | 'Linux'
@@ -330,6 +330,7 @@ def _get(path: str, want_headers: bool = False):
 
 
 @mcp.tool()
+@metrics.track_tool("get_live_frame")
 def get_live_frame() -> Image:
     """One current frame from the phone camera (JPEG). Falls back to a local test image (if configured) when the phone is unreachable."""
     try:
@@ -342,12 +343,14 @@ def get_live_frame() -> Image:
 
 
 @mcp.tool()
+@metrics.track_tool("read_sensors")
 def read_sensors() -> str:
     """The phone's current sensor values (battery level/charging, illuminance lux, acceleration x/y/z) as JSON."""
     return _get("/sensors.json").decode("utf-8")
 
 
 @mcp.tool()
+@metrics.track_tool("recent_photos")
 def recent_photos(limit: int = 8) -> str:
     """JSON list of the device's recent photos (id, name, date_added, w, h). Get the image via get_photo(id).
 
@@ -365,6 +368,7 @@ def recent_photos(limit: int = 8) -> str:
 
 
 @mcp.tool()
+@metrics.track_tool("get_photo")
 def get_photo(id: int, max_width: int = 1024) -> Image:
     """Fetch the photo for the id returned by recent_photos (downscaled to max_width)."""
     return Image(data=_get(f"/photo?id={id}&w={max_width}"), format="jpeg")
@@ -394,6 +398,7 @@ def _downloads_dir() -> str:
 
 
 @mcp.tool()
+@metrics.track_tool("get_reference")
 def get_reference() -> str:
     """Download whatever the phone currently designates as the 'share target' to the PC, save it, and return the path and metadata (JSON).
 

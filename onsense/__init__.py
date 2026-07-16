@@ -1,6 +1,6 @@
 """onSense — a PC-side MCP broker that turns your phone into the AI's eyes and sensors.
 
-Subcommands: serve (MCP server) / pair (pairing + registration) / doctor (diagnostics).
+Subcommands: serve / pair / doctor / clip / stats.
 The phone (Android app) is the HTTP provider; this package is a stdio MCP broker that connects to AI clients.
 """
 

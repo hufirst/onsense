@@ -217,10 +217,45 @@ def check_firewall(r: Report):
     # pair auto-falls back to the next free port if PAIR_PORT is busy (up to 10 tries — see
     # pair._bind_pair_server), so the firewall rule needs to cover the whole range, not just PAIR_PORT.
     port_hi = PAIR_PORT + 9
-    r.line(WARN, "Windows firewall", f"pairing port {PAIR_PORT}-{port_hi} inbound required",
-           "On the first pair run, click 'Allow private network' in the firewall prompt. "
-           f"If blocked: netsh advfirewall firewall add rule name=onsense-pair "
-           f"dir=in action=allow protocol=TCP localport={PAIR_PORT}-{port_hi}")
+    netsh_cmd = (f"netsh advfirewall firewall add rule name=onsense-pair "
+                 f"dir=in action=allow protocol=TCP localport={PAIR_PORT}-{port_hi} profile=private")
+
+    # ① Is the onsense-pair rule present? The first-run popup allowance is program-path-scoped and
+    # uvx's ephemeral python.exe paths silently invalidate it — only the port-scoped rule is durable.
+    try:
+        q = subprocess.run(["netsh", "advfirewall", "firewall", "show", "rule",
+                            "name=onsense-pair"],
+                           capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", timeout=15)
+        if q.returncode == 0 and "onsense-pair" in (q.stdout or ""):
+            r.line(OK, "Windows firewall rule", "onsense-pair rule present")
+        else:
+            r.line(WARN, "Windows firewall rule", "onsense-pair rule not found",
+                   "QR pairing needs inbound TCP on Private networks. In an admin shell: "
+                   f"{netsh_cmd}  | or without touching the firewall, use the phone app's "
+                   "[PC install helper] instead.")
+    except Exception as e:
+        r.line(WARN, "Windows firewall rule", f"check failed: {e}", f"If pairing fails: {netsh_cmd}")
+
+    # ② Network profile — 'Public' blocks inbound regardless of the rule above (rule is Private-scoped).
+    try:
+        p = subprocess.run(["powershell", "-NoProfile", "-Command",
+                            "(Get-NetConnectionProfile | Select-Object -ExpandProperty NetworkCategory) -join ','"],
+                           capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", timeout=20)
+        cats = (p.stdout or "").strip()
+        if p.returncode == 0 and cats:
+            if "Public" in cats:
+                r.line(WARN, "Windows network profile", cats,
+                       "A 'Public' profile blocks inbound connections. If this Wi-Fi is trusted: "
+                       'Set-NetConnectionProfile -InterfaceAlias "Wi-Fi" -NetworkCategory Private')
+            else:
+                r.line(OK, "Windows network profile", cats)
+        else:
+            r.line(WARN, "Windows network profile", "could not determine",
+                   "Check with Get-NetConnectionProfile — 'Public' blocks QR pairing inbound.")
+    except Exception as e:
+        r.line(WARN, "Windows network profile", f"check failed: {e}")
 
 
 def main(args) -> int:

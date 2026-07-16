@@ -2,6 +2,7 @@
 (2026-07-08: r0b machine hit a raw OSError because another local service already held 8765)."""
 import socket
 from http.server import HTTPServer
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -73,6 +74,34 @@ def test_retries_on_non_linux_errno_too():
             httpd.server_close()
     finally:
         HTTPServer.__init__ = real_init
+
+
+def test_pair_server_uses_exclusive_port_on_windows(monkeypatch):
+    """A live older QR listener must never share the same Windows port."""
+    httpd = object.__new__(pair.PairHTTPServer)
+    httpd.socket = Mock()
+    monkeypatch.setattr(pair.platform, "system", lambda: "Windows")
+    monkeypatch.setattr(pair.socket, "SO_EXCLUSIVEADDRUSE", 0x100, raising=False)
+
+    with patch.object(HTTPServer, "server_bind") as parent_bind:
+        httpd.server_bind()
+
+    assert httpd.allow_reuse_address is False
+    httpd.socket.setsockopt.assert_called_once_with(socket.SOL_SOCKET, 0x100, 1)
+    parent_bind.assert_called_once_with()
+
+
+def test_pair_server_keeps_fast_rebind_on_unix(monkeypatch):
+    httpd = object.__new__(pair.PairHTTPServer)
+    httpd.socket = Mock()
+    monkeypatch.setattr(pair.platform, "system", lambda: "Linux")
+
+    with patch.object(HTTPServer, "server_bind") as parent_bind:
+        httpd.server_bind()
+
+    assert httpd.allow_reuse_address is True
+    httpd.socket.setsockopt.assert_not_called()
+    parent_bind.assert_called_once_with()
 
 
 def test_raises_friendly_error_when_all_candidates_busy():

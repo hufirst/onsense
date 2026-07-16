@@ -17,6 +17,7 @@ MCP server launch command (called by the AI client every session):
 import ipaddress
 import json
 import os
+import platform
 import secrets
 import shutil
 import socket
@@ -124,6 +125,14 @@ def register(base: str, token: str, local: bool = False, client: str = "claude")
         clip.save_pair(base, token)
     except Exception as e:
         print("[pair] skipping clip token save:", e)
+    else:
+        # Usage aggregation is deliberately best-effort and must never prevent
+        # the credential source of truth from being saved.
+        try:
+            from . import metrics
+            metrics.record_pair()
+        except Exception:
+            pass
 
     if cli is None:
         # No AI-client CLI on PATH (e.g. Codex-only or other MCP clients): don't crash — pairing itself
@@ -168,6 +177,69 @@ def pc_lan_ip() -> str:
         s.close()
 
 
+def _netsh_rule_cmd(port_lo: int, port_hi: int) -> str:
+    """The exact PowerShell/CMD command that opens the pairing ports on Private networks."""
+    ports = str(port_lo) if port_lo == port_hi else f"{port_lo}-{port_hi}"
+    return ("netsh advfirewall firewall add rule name=onsense-pair "
+            f"dir=in action=allow protocol=TCP localport={ports} profile=private")
+
+
+def fix_firewall(port_lo: int, port_hi: int) -> bool:
+    """(Windows, opt-in) Add the onsense-pair inbound firewall rule. Returns True on success.
+
+    Needs an elevated shell; on failure we print the exact command so the user can run it themselves.
+    The rule is port-scoped (not program-scoped) on purpose: uvx may run python.exe from a different
+    ephemeral path on every invocation, which silently invalidates the per-program allowance Windows
+    grants via the first-run popup.
+    """
+    if platform.system() != "Windows":
+        print("--fix-firewall is Windows-only — skipped.")
+        return False
+    cmd = _netsh_rule_cmd(port_lo, port_hi)
+    r = _run(cmd.split())
+    if r.returncode == 0:
+        print(f"✅ Firewall rule 'onsense-pair' added (TCP {port_lo}-{port_hi}, Private inbound).")
+        return True
+    print("⚠️  Could not add the firewall rule (administrator rights are required).")
+    print("   Run this in an elevated PowerShell/CMD:")
+    print(f"     {cmd}")
+    return False
+
+
+def _windows_pair_note(ip: str, bound_port: int, port_lo: int, port_hi: int):
+    """Loud, in-flow firewall guidance on Windows — the #1 first-install failure is inbound drop."""
+    if platform.system() != "Windows":
+        return
+    print("\nWindows note:")
+    print(f"  Your phone must reach this PC at http://{ip}:{bound_port}")
+    print(f"  If scanning fails, allow inbound TCP {port_lo}-{port_hi} on Private networks:")
+    print(f"    {_netsh_rule_cmd(port_lo, port_hi)}")
+    if not (port_lo <= bound_port <= port_hi):
+        print(f"  (You are using port {bound_port}, outside the default range — open it too:)")
+        print(f"    {_netsh_rule_cmd(bound_port, bound_port)}")
+    print("  Also check the network profile (inbound is blocked hard on 'Public'):")
+    print("    Get-NetConnectionProfile")
+    print('    Set-NetConnectionProfile -InterfaceAlias "Wi-Fi" -NetworkCategory Private')
+    print("  No admin rights / prefer not to touch the firewall? Use the phone app's")
+    print("  [PC install helper] instead — the PC connects out to the phone, no inbound rule needed.")
+
+
+def _timeout_checklist(ip: str, bound_port: int, port_lo: int, port_hi: int):
+    """Cause-by-cause checklist when pairing times out — the user needs a next action, not just 'failed'."""
+    print("\nChecklist:")
+    print("  1. Is the phone on the same Wi-Fi as this PC?")
+    print(f"  2. Is the QR IP ({ip}) on the same subnet as the phone? "
+          "(VPN/WSL/Hyper-V/Tailscale can pick the wrong NIC — retry with --host <this-PC's-LAN-IP>)")
+    if platform.system() == "Windows":
+        print(f"  3. Is inbound TCP {port_lo}-{port_hi} allowed on Private networks? "
+              "(see the Windows note above, or retry with --fix-firewall in an admin shell)")
+        print("  4. Alternative that avoids the firewall entirely: in the phone app, tap "
+              "[PC install helper] and open the shown URL in this PC's browser.")
+    else:
+        print("  3. Is a local firewall dropping inbound "
+              f"TCP {bound_port}? (e.g. ufw allow {bound_port}/tcp)")
+
+
 def _lan_ok(addr: str) -> bool:
     """Allow only loopback/private (RFC1918)/link-local — confines pairing to the LAN."""
     try:
@@ -186,7 +258,33 @@ def _valid_base(b: str) -> bool:
     return u.scheme == "http" and bool(u.hostname) and _lan_ok(u.hostname)
 
 
-def _bind_pair_server(ip: str, port: int, handler, tries: int = 10):
+class PairHTTPServer(HTTPServer):
+    """Pairing listener with platform-correct port ownership.
+
+    ``HTTPServer`` enables ``SO_REUSEADDR``. On Windows that can allow two live
+    processes to bind the same address, so a phone POST may reach an older QR
+    listener and fail with ``bad pairing secret``. Windows must own the port
+    exclusively; Unix keeps reuse enabled so an immediately repeated pairing
+    is not blocked by a recently closed connection in TIME_WAIT.
+    """
+
+    def server_bind(self):
+        if platform.system() == "Windows":
+            self.allow_reuse_address = False
+            exclusive = getattr(socket, "SO_EXCLUSIVEADDRUSE", None)
+            if exclusive is not None:
+                self.socket.setsockopt(socket.SOL_SOCKET, exclusive, 1)
+        else:
+            self.allow_reuse_address = True
+        super().server_bind()
+
+    def handle_error(self, request, client_address):
+        # Port scanners / LAN probes open-and-reset connections. The default
+        # handler prints a traceback even though the listener is healthy.
+        pass
+
+
+def _bind_pair_server(ip: str, port: int, handler, tries: int = 10, server_cls=HTTPServer):
     """Bind the QR-pairing HTTPServer, auto-advancing past busy ports.
 
     A fixed port means any other program already squatting on it (a stale prior `pair` run, an
@@ -204,7 +302,7 @@ def _bind_pair_server(ip: str, port: int, handler, tries: int = 10):
     last_err = None
     for candidate in range(port, port + tries):
         try:
-            return HTTPServer((ip, candidate), handler), candidate
+            return server_cls((ip, candidate), handler), candidate
         except OSError as e:
             last_err = e
     raise OSError(
@@ -214,9 +312,33 @@ def _bind_pair_server(ip: str, port: int, handler, tries: int = 10):
     )
 
 
+def _candidate_ips() -> list:
+    """All private IPv4s on this machine — shown so multi-NIC users can spot a wrong QR IP and pick --host."""
+    ips = []
+    try:
+        for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
+            a = info[4][0]
+            if a not in ips and _lan_ok(a) and not a.startswith("127."):
+                ips.append(a)
+    except OSError:
+        pass
+    return ips
+
+
 def serve_and_register(local: bool = False, client: str = "claude", port: int = PAIR_PORT,
-                       timeout_s: int = 300):
-    ip = pc_lan_ip()
+                       timeout_s: int = 300, host: str = None):
+    if host:
+        if not _lan_ok(host):
+            print(f"Pairing failed: --host {host} is not a private/LAN address.")
+            return
+        ip = host
+    else:
+        ip = pc_lan_ip()
+        others = [a for a in _candidate_ips() if a != ip]
+        if others:
+            print(f"[pair] binding to {ip} — other local IPs: {', '.join(others)}")
+            print("[pair] if the phone can't reach this IP (VPN/WSL/Hyper-V/Tailscale), "
+                  "re-run with --host <ip>.")
     # One-time secret for channel binding — delivered to the phone only via the QR (face-to-face out-of-band channel).
     # The phone POSTs with the full scanned URL (query included), so the listener verifies s → blocking a
     # preemptive injection (registering a fake base/token) by a LAN attacker who never saw the QR.
@@ -264,7 +386,7 @@ def serve_and_register(local: bool = False, client: str = "claude", port: int = 
 
     # Bind to the LAN IP only instead of 0.0.0.0 (reduce exposure). The pairing window itself has a timeout.
     try:
-        httpd, bound_port = _bind_pair_server(ip, port, H)
+        httpd, bound_port = _bind_pair_server(ip, port, H, server_cls=PairHTTPServer)
     except OSError as e:
         print(f"\nPairing failed: {e}")
         return
@@ -285,6 +407,7 @@ def serve_and_register(local: bool = False, client: str = "claude", port: int = 
     print(f"Step 2 — open it, tap [Scan PC QR], and scan the QR above.  Waiting...  ({url})")
     print("(If the firewall prompts or blocks, allow inbound port "
           f"{bound_port} on this PC's private network.)")
+    _windows_pair_note(ip, bound_port, PAIR_PORT, PAIR_PORT + 9)
 
     httpd.timeout = 1.0
     deadline = time.monotonic() + timeout_s
@@ -295,9 +418,13 @@ def serve_and_register(local: bool = False, client: str = "claude", port: int = 
             httpd.server_close()
             print(f"\nPairing timed out ({timeout_s}s). Make sure the onSense app is installed and "
                   "the phone is on the same Wi-Fi, then run `uvx onsense pair` again.")
+            _timeout_checklist(ip, bound_port, PAIR_PORT, PAIR_PORT + 9)
             return
         if not hinted and now > deadline - timeout_s / 2:  # halfway reminder, listener stays live
             print("...still waiting. Install the onSense app and tap [Scan PC QR] if you haven't yet.")
+            if platform.system() == "Windows":
+                print("   If scanning keeps failing, the Windows firewall is the usual cause — "
+                      "see the Windows note above, or use the app's [PC install helper].")
             hinted = True
         httpd.handle_request()
     httpd.server_close()
@@ -321,5 +448,8 @@ def main(args) -> int:
         print(f"pairing: base={base}  token={token[:4]}****")
         register(base, token, local=local, client=client)
         return 0
-    serve_and_register(local=local, client=client, port=getattr(args, "port", None) or PAIR_PORT)
+    if getattr(args, "fix_firewall", False):
+        fix_firewall(PAIR_PORT, PAIR_PORT + 9)
+    serve_and_register(local=local, client=client, port=getattr(args, "port", None) or PAIR_PORT,
+                       host=getattr(args, "host", None))
     return 0

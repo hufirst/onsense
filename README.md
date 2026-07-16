@@ -32,13 +32,31 @@ Android phone (onSense app)           PC (this package)           AI client
 
 ## Requirements
 
-- Python 3.10+ and [uv](https://docs.astral.sh/uv/) (provides `uvx`)
+- [uv](https://docs.astral.sh/uv/) (provides `uvx`; downloads a managed Python automatically — no separate Python install needed)
 - The onSense Android app installed on a phone on the **same local Wi-Fi network** as your PC
 - An MCP-compatible AI client such as [Claude Code](https://claude.ai/code), Codex, or any stdio MCP client
 
 ---
 
 ## Quick Start
+
+### 0. Fresh PC without uv? Use the app's setup helper (recommended)
+
+On a clean PC, `uvx` doesn't exist yet and the command below will fail with *"'uvx' is not recognized"*. The easiest fix: install the onSense app first, tap **"Start PC setup helper"**, and open the shown address on your PC. It gives you a one-line command that installs uv, pairs, and registers the MCP server in one go — and because the PC connects *out* to the phone, it also sidesteps the Windows firewall entirely.
+
+Prefer installing uv yourself? One line:
+
+```powershell
+# Windows (PowerShell)
+irm https://astral.sh/uv/install.ps1 | iex
+$env:Path = "$env:USERPROFILE\.local\bin;$env:Path"   # make uvx visible in this same shell
+```
+
+```bash
+# macOS / Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+export PATH="$HOME/.local/bin:$PATH"
+```
 
 ### 1. Pair your phone
 
@@ -67,6 +85,20 @@ uvx onsense doctor           # checks Python, uv, MCP, Claude registration, mDNS
 uvx onsense doctor --base http://192.168.1.5:8080 --token YOUR_PAIRING_TOKEN
 ```
 
+### Windows: QR scan times out?
+
+The #1 cause is the Windows firewall dropping the phone's inbound connection:
+
+- If your Wi-Fi network profile is **Public**, inbound traffic is blocked hard. Switch it to **Private** (Settings → Network → your Wi-Fi → Network profile), or just use the app's **PC setup helper**, which needs no inbound port at all.
+- On a Private network, add a durable allow rule once (run as administrator):
+
+  ```powershell
+  uvx onsense pair --fix-firewall
+  ```
+
+  The first-run firewall popup is *program-path-scoped* and uvx's ephemeral paths silently invalidate it — the port-scoped rule above (TCP 8765–8774, Private) is what actually sticks.
+- If port 8765 is taken, `pair` automatically falls back to the next free port (up to 8774) and the QR reflects the real port — no action needed.
+
 ---
 
 ## Subcommands
@@ -81,7 +113,9 @@ uvx onsense doctor --base http://192.168.1.5:8080 --token YOUR_PAIRING_TOKEN
 | `uvx onsense clip` | Run the clip bridge daemon standalone (port 8770) |
 | `uvx onsense clip --allow-pull` | Enable phone→pull: phone can GET /clip to retrieve the PC clipboard |
 | `uvx onsense clip --set-clipboard` | Auto-inject received content into the PC OS clipboard (off by default) |
+| `uvx onsense pair --fix-firewall` | (Windows, admin) Add the durable port-scoped firewall rule, then pair as usual |
 | `uvx onsense doctor` | Diagnose installation, connectivity, and phone reachability |
+| `uvx onsense stats` | Show local-only activation stats (`--json`, `--reset`). Nothing is uploaded automatically |
 
 ---
 

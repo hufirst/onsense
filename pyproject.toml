@@ -1,6 +1,6 @@
 [project]
 name = "onsense"  # PyPI 배포명·import 패키지·CLI 모두 onsense (PyPI/npm/GitHub 전 네임스페이스 가용 확인)
-version = "0.3.15"
+version = "0.3.16"
 description = "Turn your Android phone into a camera and sensor source for PC AI agents (onSense MCP broker)"
 readme = "README.md"
 requires-python = ">=3.10"

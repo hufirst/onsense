@@ -10,6 +10,9 @@ import shutil
 import subprocess
 import sys
 
+# Windows: 콘솔 없는 프로세스에서 powershell/netsh 를 띄울 때 빈 콘솔 창 억제.
+_NOWIN = {"creationflags": subprocess.CREATE_NO_WINDOW} if os.name == "nt" else {}
+
 from . import __version__, PAIR_PORT, PHONE_PORT, auth
 
 OK, WARN, FAIL = "✅", "⚠️ ", "❌"
@@ -226,7 +229,7 @@ def check_firewall(r: Report):
         q = subprocess.run(["netsh", "advfirewall", "firewall", "show", "rule",
                             "name=onsense-pair"],
                            capture_output=True, text=True, encoding="utf-8",
-                           errors="replace", timeout=15)
+                           errors="replace", timeout=15, **_NOWIN)
         if q.returncode == 0 and "onsense-pair" in (q.stdout or ""):
             r.line(OK, "Windows firewall rule", "onsense-pair rule present")
         else:
@@ -242,7 +245,7 @@ def check_firewall(r: Report):
         p = subprocess.run(["powershell", "-NoProfile", "-Command",
                             "(Get-NetConnectionProfile | Select-Object -ExpandProperty NetworkCategory) -join ','"],
                            capture_output=True, text=True, encoding="utf-8",
-                           errors="replace", timeout=20)
+                           errors="replace", timeout=20, **_NOWIN)
         cats = (p.stdout or "").strip()
         if p.returncode == 0 and cats:
             if "Public" in cats:

@@ -33,6 +33,10 @@ from . import CLIP_PORT, __version__, auth, crypto
 
 OSNAME = platform.system()  # 'Windows' | 'Darwin' | 'Linux'
 
+# Windows: 콘솔 없는 데몬이 powershell 같은 콘솔 프로그램을 띄우면 빈 콘솔 창이
+# 화면에 나타난다 — CREATE_NO_WINDOW 로 억제한다.
+_NOWIN = {"creationflags": subprocess.CREATE_NO_WINDOW} if OSNAME == "Windows" else {}
+
 
 # ── Settings/token store (written by pair, read by the daemon) ───────────────
 def _home() -> str:
@@ -334,7 +338,7 @@ def set_clipboard_image(path: str) -> bool:
         if OSNAME == "Windows":
             ps = _PS_SET_IMG.format(path=path.replace("'", "''"))
             r = subprocess.run(["powershell", "-STA", "-NoProfile", "-NonInteractive", "-Command", ps],
-                               capture_output=True, timeout=15)
+                               capture_output=True, timeout=15, **_NOWIN)
             return r.returncode == 0
         if OSNAME == "Darwin":
             scr = f'set the clipboard to (read (POSIX file "{path}") as JPEG picture)'
@@ -390,7 +394,7 @@ def set_clipboard_file(path: str) -> bool:
         if OSNAME == "Windows":
             ps = _PS_SET_FILE.format(path=path.replace("'", "''"))
             r = subprocess.run(["powershell", "-STA", "-NoProfile", "-NonInteractive", "-Command", ps],
-                               capture_output=True, timeout=15)
+                               capture_output=True, timeout=15, **_NOWIN)
             return r.returncode == 0
         if OSNAME == "Darwin":
             esc = path.replace("\\", "\\\\").replace('"', '\\"')
@@ -427,7 +431,7 @@ def set_clipboard_text(text: str) -> bool:
             ps = ("[Console]::InputEncoding=[System.Text.UTF8Encoding]::new();"
                   "$in=[Console]::In.ReadToEnd(); Set-Clipboard -Value $in")
             r = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", ps],
-                               input=data, capture_output=True, timeout=15)
+                               input=data, capture_output=True, timeout=15, **_NOWIN)
             return r.returncode == 0
         if OSNAME == "Darwin":
             return subprocess.run(["pbcopy"], input=data, capture_output=True, timeout=15).returncode == 0
@@ -445,7 +449,7 @@ def get_clipboard_text() -> str:
             ps = ("[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new();"
                   "Get-Clipboard -Raw")
             r = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", ps],
-                               capture_output=True, timeout=15)
+                               capture_output=True, timeout=15, **_NOWIN)
             if r.returncode != 0:
                 return ""
             out = r.stdout.decode("utf-8", "replace")
@@ -476,7 +480,7 @@ def get_clipboard_files() -> list:
                   "$f=[System.Windows.Forms.Clipboard]::GetFileDropList();"
                   "if($f){$f -join \"`n\"}")
             r = subprocess.run(["powershell", "-STA", "-NoProfile", "-NonInteractive", "-Command", ps],
-                               capture_output=True, timeout=15)
+                               capture_output=True, timeout=15, **_NOWIN)
             out = r.stdout.decode("utf-8", "replace").strip() if r.returncode == 0 else ""
             return [ln.strip() for ln in out.splitlines() if ln.strip()]
         if OSNAME == "Darwin":
@@ -524,7 +528,7 @@ def get_clipboard_image() -> bytes:
                   "$i=[System.Windows.Forms.Clipboard]::GetImage();"
                   f"if($i){{$i.Save('{tmp}');'OK'}}else{{'NONE'}}")
             r = subprocess.run(["powershell", "-STA", "-NoProfile", "-NonInteractive", "-Command", ps],
-                               capture_output=True, timeout=15)
+                               capture_output=True, timeout=15, **_NOWIN)
             if r.returncode == 0 and b"OK" in r.stdout and os.path.exists(tmp):
                 with open(tmp, "rb") as f:
                     return f.read()

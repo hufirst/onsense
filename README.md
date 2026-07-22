@@ -2,7 +2,7 @@
 
 <!-- mcp-name: io.github.hufirst/onsense -->
 
-**Give your PC AI agents real-world eyes.** `onsense` is the PC-side MCP broker for the [onSense](https://play.google.com/store/apps/details?id=com.shdev.onsense) Android app: run `uvx onsense pair` on your PC, and **any MCP-capable AI** — Claude Code, Claude Desktop, Codex, or your own agent — can see through your phone's camera, read its sensors, and move files & clipboard both ways. **No cloud relay. No ADB.**
+**Don't describe it. Let your AI see it.** `onsense` is the PC-side MCP broker for the [onSense](https://play.google.com/store/apps/details?id=com.shdev.onsense) Android app: run `uvx onsense pair` on your PC, and **any MCP-capable AI** — Claude Code, Claude Desktop, Codex, or your own agent — can see through your phone's camera, read its sensors, and move files & clipboard both ways. **No cloud relay. No ADB.**
 
 ![onSense demo — Claude Code reads the phone's sensors and camera through onSense](https://raw.githubusercontent.com/hufirst/onsense/main/docs/split-demo.gif)
 

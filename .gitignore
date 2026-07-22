@@ -4,6 +4,8 @@ build/
 __pycache__/
 *.pyc
 .venv/
+.mcpregistry_github_token
+.mcpregistry_registry_token
 pair_qr.png
 .omc/
 .claude/

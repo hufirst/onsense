@@ -66,8 +66,10 @@ def _current_base() -> str:
 
 
 def _current_token() -> str:
-    # pair.json is read live so a long-running Claude MCP process follows re-pairing.
-    return (_load_pair().get("token") or PHONE_TOKEN or "").strip()
+    # Explicit CLI arg > pair.json > ambient env. pair.json is read live so a
+    # long-running Claude MCP process follows re-pairing.
+    return (os.environ.get("_ONSENSE_EXPLICIT_TOKEN")
+            or _load_pair().get("token") or PHONE_TOKEN or "").strip()
 
 
 def _token_diag(token: str) -> str:

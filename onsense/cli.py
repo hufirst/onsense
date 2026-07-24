@@ -70,7 +70,7 @@ def main(argv=None) -> int:
     if args.cmd == "serve":
         import os
         if getattr(args, "token", None):
-            os.environ["PHONE_TOKEN"] = args.token
+            os.environ["_ONSENSE_EXPLICIT_TOKEN"] = args.token
         if not getattr(args, "no_clip", False):
             from . import clip
             clip.spawn_detached()  # Ensure the phone→PC clipboard/file daemon singleton (a failure does not affect serve)

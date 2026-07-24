@@ -6,13 +6,13 @@
     "url": "https://github.com/hufirst/onsense",
     "source": "github"
   },
-  "version": "0.3.16",
+  "version": "0.3.17",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "onsense",
-      "version": "0.3.16",
+      "version": "0.3.17",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"

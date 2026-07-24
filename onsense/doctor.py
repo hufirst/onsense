@@ -194,7 +194,7 @@ def _report_phone_version(r: Report, base: str):
 
 
 def check_clip_daemon(r: Report):
-    """Check clip daemon (8770) presence and version match — surfaces a stale daemon (e.g. from the uv cache) squatting."""
+    """Check clip daemon presence plus version/token identity."""
     from . import clip
     info = clip._health()
     if info is None:
@@ -206,12 +206,26 @@ def check_clip_daemon(r: Report):
                "Kill the process holding the port, then run `onsense clip`.")
         return
     ver = info.get("version") or "old version (0.1.x)"
-    if info.get("version") == __version__:
-        r.line(OK, "clip daemon", f"v{ver} · pull={'ON' if info.get('allow_pull') else 'OFF'} · "
-               f"remote_settings={'ON' if info.get('allow_remote_settings') else 'OFF'}")
-    else:
-        r.line(WARN, "clip daemon", f"version mismatch: daemon {ver} ≠ installed v{__version__}",
-               "Running `onsense clip` auto-replaces it with the same version (version-aware singleton).")
+    if info.get("version") != __version__:
+        if clip.is_newer_version(info.get("version"), __version__):
+            r.line(WARN, "clip daemon", f"daemon v{ver} is newer than installed v{__version__}",
+                   "Update the installed onsense package. Older clients will not downgrade the newer daemon.")
+        else:
+            r.line(WARN, "clip daemon", f"version mismatch: daemon {ver} ≠ installed v{__version__}",
+                   "Running `uvx onsense clip` replaces the older daemon with the installed version.")
+        return
+    expected_fp = clip.token_fp()
+    running_fp = info.get("token_fp")
+    if running_fp != expected_fp:
+        detail = ("fingerprint unavailable (old daemon)"
+                  if running_fp is None
+                  else f"token mismatch: daemon {running_fp or '-'} ≠ paired {expected_fp or '-'}")
+        r.line(FAIL, "clip daemon", f"v{ver} · {detail}",
+               "Run `uvx onsense clip` (or restart the AI client). It will replace the stale daemon automatically.")
+        return
+    r.line(OK, "clip daemon", f"v{ver} · token={running_fp or '-'} · "
+           f"pull={'ON' if info.get('allow_pull') else 'OFF'} · "
+           f"remote_settings={'ON' if info.get('allow_remote_settings') else 'OFF'}")
 
 
 def check_firewall(r: Report):
@@ -271,10 +285,11 @@ def main(args) -> int:
     check_slash_command(r)
     print()
     bases = discover(r)
-    token = getattr(args, "token", None) or os.environ.get("PHONE_TOKEN")
-    base_arg = getattr(args, "base", None) or os.environ.get("PHONE_BASE")
-    # After a normal pairing, read pair.json as a fallback so diagnostics work without --token/PHONE_TOKEN
-    # (the same source of truth as serve). If absent, run unauthenticated diagnostics as before.
+    # Priority: explicit --token/--base arg > pair.json > env. pair.json must beat env so doctor
+    # diagnoses with the SAME token the daemons use — a stale exported PHONE_TOKEN otherwise makes
+    # doctor mis-report "token mismatch" against a perfectly healthy pairing.
+    token = getattr(args, "token", None)
+    base_arg = getattr(args, "base", None)
     if not token or not base_arg:
         try:
             import json
@@ -285,6 +300,8 @@ def main(args) -> int:
             base_arg = base_arg or pj.get("base")
         except Exception:
             pass
+    token = token or os.environ.get("PHONE_TOKEN")
+    base_arg = base_arg or os.environ.get("PHONE_BASE")
     check_reach(r, bases, base_arg, token)
     check_clip_daemon(r)
     check_firewall(r)

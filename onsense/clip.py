@@ -135,14 +135,42 @@ def save_pair(base: str, token: str) -> None:
 
 
 def load_token() -> str:
-    tok = os.environ.get("ONSENSE_TOKEN") or os.environ.get("PHONE_TOKEN")
-    if tok:
-        return tok
+    # CLI `serve --token` is an explicit one-shot override. The private env name
+    # distinguishes it from ambient/stale shell variables inherited by uvx.
+    explicit = os.environ.get("_ONSENSE_EXPLICIT_TOKEN")
+    if explicit:
+        return explicit
+    # pair.json first (single source of truth after pairing) — matches server._current_token.
+    # Env vars are a FALLBACK for un-paired dev/test setups only: a stale exported
+    # PHONE_TOKEN must never silently override a fresh pairing (caused "send failed" bugs).
     try:
         with open(config_path(), encoding="utf-8") as f:
-            return (json.load(f) or {}).get("token") or ""
+            tok = (json.load(f) or {}).get("token") or ""
+        if tok:
+            return tok
     except Exception:
-        return ""
+        pass
+    return os.environ.get("ONSENSE_TOKEN") or os.environ.get("PHONE_TOKEN") or ""
+
+
+def token_fp(tok: str = None) -> str:
+    """Non-secret token fingerprint (sha256 first 8 hex) — for health/diagnostics only."""
+    import hashlib
+    t = load_token() if tok is None else tok
+    return hashlib.sha256(t.encode("utf-8")).hexdigest()[:8] if t else ""
+
+
+def _version_key(version: str) -> tuple:
+    """Comparable numeric release key; unknown/dev versions sort as oldest."""
+    try:
+        core = (version or "").split("+", 1)[0].split("-", 1)[0]
+        return tuple(int(part) for part in core.split("."))
+    except (TypeError, ValueError):
+        return ()
+
+
+def is_newer_version(candidate: str, current: str) -> bool:
+    return _version_key(candidate) > _version_key(current)
 
 
 # ── Save paths ───────────────────────────────────────────────────────────────
@@ -579,11 +607,21 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         path = self.path.rstrip("/") or "/"
         if path in ("/", "/health"):
-            # Unauthenticated health — daemon presence + current flags (for the phone's situational-awareness probe). Flags are non-sensitive.
+            # Health remains readable without credentials for local diagnostics. A
+            # caller that supplies signed headers gets an authenticated=true proof;
+            # invalid signed requests are rejected instead of becoming a false
+            # positive merely because the port is reachable.
+            signed = any(self.headers.get(n) for n in
+                         (auth.TS_HEADER, auth.NONCE_HEADER, auth.SIG_HEADER))
+            if signed and not self._authed():
+                return
             fl = load_flags()
             body = json.dumps({"app": "onsense-clip", "os": OSNAME, "version": __version__,
                                "allow_pull": fl["allow_pull"], "set_clipboard": fl["set_clipboard"],
-                               "allow_remote_settings": fl["allow_remote_settings"]})
+                               "allow_remote_settings": fl["allow_remote_settings"],
+                               "authenticated": signed,
+                               # Fingerprint (not the token) — lets a new pair/daemon detect a stale-token daemon and replace it.
+                               "token_fp": token_fp()})
             self._send(200, body, ctype="application/json")
             return
         if path == "/clip":
@@ -787,6 +825,14 @@ def main(port: int = CLIP_PORT, allow_pull: bool = False, set_clipboard: bool = 
                    set_clipboard=True if set_clipboard else None)
     if not load_token():
         print("[clip] warning: token not set — /clip requests are rejected. Use it after `onsense pair`.")
+    else:
+        env_tok = os.environ.get("ONSENSE_TOKEN") or os.environ.get("PHONE_TOKEN")
+        explicit_tok = os.environ.get("_ONSENSE_EXPLICIT_TOKEN")
+        if not explicit_tok and env_tok and env_tok != load_token():
+            print(f"[clip] warning: ONSENSE_TOKEN/PHONE_TOKEN is set in this environment but differs from "
+                  f"pair.json — pair.json wins (env fp={token_fp(env_tok)}, paired fp={token_fp()}). "
+                  f"`unset ONSENSE_TOKEN PHONE_TOKEN` to silence this.")
+        print(f"[clip] token fp={token_fp()}")
     httpd = None
     for attempt in (1, 2):
         try:
@@ -804,13 +850,26 @@ def main(port: int = CLIP_PORT, allow_pull: bool = False, set_clipboard: bool = 
                       f"Check what owns the port.")
                 return 1
             if theirs == __version__:
-                print(f"[clip] the same version (v{__version__}) is already running on :{port} — skipping extra startup (singleton).")
+                # Same version: normally yield (singleton) — UNLESS the running daemon verifies with a
+                # different token (e.g. it inherited a stale PHONE_TOKEN env). Then replace it so a fresh
+                # pairing actually takes effect (root cause of "phone paired but send fails").
+                ours_fp, theirs_fp = token_fp(), (info or {}).get("token_fp")
+                if theirs_fp != ours_fp:
+                    print(f"[clip] same version (v{__version__}) on :{port} but token mismatch "
+                          f"(running={theirs_fp or '-'} vs paired={ours_fp or '-'}) — replacing the stale daemon.")
+                else:
+                    print(f"[clip] the same version (v{__version__}) is already running on :{port} — skipping extra startup (singleton).")
+                    return 0
+            elif is_newer_version(theirs, __version__):
+                print(f"[clip] a newer daemon (v{theirs}) is already running on :{port}; "
+                      f"v{__version__} will not downgrade it.")
                 return 0
             if attempt == 2:
                 print(f"[clip] failed to replace the old daemon on :{port} — kill it manually and rerun "
                       f"(Linux: fuser -k {port}/tcp).")
                 return 1
-            print(f"[clip] a different-version (v{theirs or '?'}) daemon is on :{port} — replacing it with v{__version__}.")
+            if theirs != __version__:
+                print(f"[clip] a different-version (v{theirs or '?'}) daemon is on :{port} — replacing it with v{__version__}.")
             if not _request_shutdown(port):   # Signed shutdown request for newer daemons
                 _kill_port_owner(port)        # Last resort for old daemons (no /shutdown)
             for _ in range(30):               # Wait up to 3s for shutdown
@@ -895,13 +954,19 @@ def spawn_detached() -> None:
 
     Two-layer duplicate prevention: ① liveness check right before spawn (don't start at all if already up) →
     ② if a race still starts two at once, main()'s port-bind guard (EADDRINUSE) immediately exits the loser.
-    Version-aware: even if one is alive, spawn a child if it's a different-version onsense-clip — the child's main() performs the replacement.
+    Version/token-aware: even if one is alive, spawn a child if its version or token
+    fingerprint differs (including an old daemon without token_fp) — the child's
+    main() performs the replacement.
     """
     if _daemon_alive():
         info = _health()
-        if not (info and info.get("app") == "onsense-clip"
-                and info.get("version") != __version__):
-            return  # Same version (or not onsense — don't touch it) — no extra startup
+        is_onsense = info and info.get("app") == "onsense-clip"
+        needs_replace = (is_onsense
+                         and not is_newer_version(info.get("version"), __version__)
+                         and (info.get("version") != __version__
+                              or info.get("token_fp") != token_fp()))
+        if not needs_replace:
+            return  # Current daemon (or an unrelated port owner) — no extra startup
     try:
         import sys
         kwargs = {}
